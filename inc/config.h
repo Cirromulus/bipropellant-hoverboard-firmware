@@ -22,84 +22,6 @@
 //////////////////////////////////////////////////////////
 // implementaiton of specific for macro control types
 // provide a short explaination here
-#if (CONTROL_TYPE == HOVERBOARD)
-  // this control type allows the board to be used AS a hoverboard,
-  // responding to sensor movements when in hoverboard mode.
-  /// and uses softwareserial for serial control on B2/C9
-  #define INCLUDE_PROTOCOL INCLUDE_PROTOCOL2
-  #define READ_SENSOR
-  #define CONTROL_SENSOR
-  #define SOFTWARE_SERIAL
-  #define SOFTWATCHDOG_TIMEOUT -1   // Disable Watchdog, uses the same timer as SOFTWARE_SERIAL
-  #define DEBUG_SOFTWARE_SERIAL
-  #define SERIAL_USART2_IT
-  #define SERIAL_USART3_IT
-  #define USART2_BAUD     52350    // reported baudrate for other sensor boards (6 word)?
-  #define USART3_BAUD     52350    // reported baudrate for other sensor boards (6 word)?
-  #define USART2_WORDLENGTH UART_WORDLENGTH_9B
-  #define USART3_WORDLENGTH UART_WORDLENGTH_9B
-  #define SERIAL_USART_IT_BUFFERTYPE unsigned short
-  #define USART2_BAUD_SENSE 1
-  #define USART3_BAUD_SENSE 1
-#endif
-
-#if (CONTROL_TYPE == HOVERBOARD_WITH_SOFTWARE_SERIAL_B2_C9)
-  // this control type allows the board to be used AS a hoverboard,
-  // responding to sensor movements when in hoverboard mode.
-  /// and uses softwareserial for serial control on B2/C9
-  #define INCLUDE_PROTOCOL INCLUDE_PROTOCOL2
-  #define READ_SENSOR
-  #define CONTROL_SENSOR
-  #define SOFTWARE_SERIAL
-  #define SOFTWARE_SERIAL_RX_PIN GPIO_PIN_2
-  #define SOFTWARE_SERIAL_RX_PORT GPIOB
-  #define SOFTWARE_SERIAL_TX_PIN GPIO_PIN_9
-  #define SOFTWARE_SERIAL_TX_PORT GPIOC
-  //#define DEBUG_SERIAL_ASCII
-  #define DEBUG_SOFTWARE_SERIAL
-//    #define USART2_BAUD     52177    // control via usart from GD32 based sensor boards @52177 baud (10 word)
-//    #define USART3_BAUD     52177    // control via usart from GD32 based sensor boards @52177 baud (10 word)
-  #define SENSOR_WORDS 10
-  #define SERIAL_USART2_IT
-  #define SERIAL_USART3_IT
-  #define USART2_BAUD     26315    // reported baudrate for other sensor boards (6 word)?
-  #define USART3_BAUD     26315    // reported baudrate for other sensor boards (6 word)?
-  #define USART2_WORDLENGTH UART_WORDLENGTH_9B
-  #define USART3_WORDLENGTH UART_WORDLENGTH_9B
-  #define SERIAL_USART_IT_BUFFERTYPE unsigned short
-//#define USART2_BAUD     32100    // reported baudrate for another sensor board  (10 word 'Denver' brand hoverboards)
-//#define USART3_BAUD     32100    // reported baudrate for another sensor board  (10 word 'Denver' brand hoverboards)
-  // possibly baud rate based on ~2.5ms frame interval, so baud dependent on word count?
-#endif
-
-#if (CONTROL_TYPE == HOVERBOARD_WITH_SOFTWARE_SERIAL_B2_C9_6WORDSENSOR)
-  // this control type allows the board to be used AS a hoverboard,
-  // responding to sensor movements when in hoverboard mode.
-  /// and uses softwareserial for serial control on B2/C9
-  #define INCLUDE_PROTOCOL INCLUDE_PROTOCOL2
-  #define READ_SENSOR
-  #define CONTROL_SENSOR
-  #define SOFTWARE_SERIAL
-  #define SOFTWARE_SERIAL_RX_PIN GPIO_PIN_2
-  #define SOFTWARE_SERIAL_RX_PORT GPIOB
-  #define SOFTWARE_SERIAL_TX_PIN GPIO_PIN_9
-  #define SOFTWARE_SERIAL_TX_PORT GPIOC
-  //#define DEBUG_SERIAL_ASCII
-  #define DEBUG_SOFTWARE_SERIAL
-//#define USART2_BAUD     52177    // control via usart from GD32 based sensor boards @52177 baud (10 word)
-//#define USART3_BAUD     52177    // control via usart from GD32 based sensor boards @52177 baud (10 word)
-  #define USART2_BAUD     26315    // reported baudrate for other sensor boards (6 word)?
-  #define USART3_BAUD     26315    // reported baudrate for other sensor boards (6 word)?
-  #define USART2_WORDLENGTH UART_WORDLENGTH_9B
-  #define USART3_WORDLENGTH UART_WORDLENGTH_9B
-  #define SERIAL_USART_IT_BUFFERTYPE unsigned short
-  #define SENSOR_WORDS 6
-  #define SERIAL_USART2_IT
-  #define SERIAL_USART3_IT
-//#define USART2_BAUD     32100    // reported baudrate for another sensor board (maybe 7 word)?
-//#define USART3_BAUD     32100    // reported baudrate for another sensor board (maybe 7 word)?
-  // possibly baud rate based on ~2.5ms frame interval, so baud dependent on word count?
-#endif
 
 
 #if (CONTROL_TYPE == SOFTWARE_SERIAL_A2_A3)
@@ -388,11 +310,6 @@
   #define ADC_TANKMODE 0              // define if each input should control one wheel
 #endif
 
-// ###### CONTROL VIA NINTENDO NUNCHUCK ######
-// left sensor board cable. keep cable short, use shielded cable, use ferrits, stabalize voltage in nunchuck, use the right one of the 2 types of nunchucks, add i2c pullups. use original nunchuck. most clones does not work very well.
-//#define CONTROL_NUNCHUCK            // use nunchuck as input. disable DEBUG_SERIAL_USART3!
-
-
 //#define WHEEL_SIZE_INCHES 8.5 - set to your wheelsize to override the default 6.5
 
 
@@ -466,14 +383,6 @@
   #endif
 #endif
 
-#if defined(CONTROL_ADC)
-  #ifdef SENSOR_BOARD_CABLE_LEFT_IN_USE
-    #error CONTROL_ADC not allowed, cable already in use.
-  #else
-    #define SENSOR_BOARD_CABLE_LEFT_IN_USE
-  #endif
-#endif
-
 #if defined(CONTROL_PPM)
   #ifdef SENSOR_BOARD_CABLE_LEFT_IN_USE
     #error CONTROL_PPM not allowed, cable already in use.
@@ -497,22 +406,9 @@
 #endif
 
 
-#if defined(CONTROL_NUNCHUCK)
-  #ifdef SENSOR_BOARD_CABLE_RIGHT_IN_USE
-    #error CONTROL_NUNCHUCK not allowed, cable already in use.
-  #else
-    #define SENSOR_BOARD_CABLE_RIGHT_IN_USE
-  #endif
-  #ifdef CONTROL_METHOD_DEFINED
-    #error CONTROL_NUNCHUCK not allowed, another control Method is already defined.
-  #else
-    #define CONTROL_METHOD_DEFINED
-  #endif
-#endif
-
 #if defined(INCLUDE_PROTOCOL)
   #ifdef CONTROL_METHOD_DEFINED
-    #error INCLUDE_PROTOCOL not allowed, another control Method is already defined.
+    #warning INCLUDE_PROTOCOL not allowed, another control Method is already defined.
   #else
     #define CONTROL_METHOD_DEFINED
   #endif

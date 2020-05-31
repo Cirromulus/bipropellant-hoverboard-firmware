@@ -83,37 +83,3 @@ void PPM_Init() {
   HAL_TIM_Base_Start(&TimHandle);
 }
 #endif
-
-void Nunchuck_Init() {
-    //-- START -- init WiiNunchuck
-  i2cBuffer[0] = 0xF0;
-  i2cBuffer[1] = 0x55;
-
-  HAL_I2C_Master_Transmit(&hi2c2,0xA4,(uint8_t*)i2cBuffer, 2, 100);
-  HAL_Delay(10);
-
-  i2cBuffer[0] = 0xFB;
-  i2cBuffer[1] = 0x00;
-
-  HAL_I2C_Master_Transmit(&hi2c2,0xA4,(uint8_t*)i2cBuffer, 2, 100);
-  HAL_Delay(10);
-}
-
-void Nunchuck_Read() {
-  i2cBuffer[0] = 0x00;
-  HAL_I2C_Master_Transmit(&hi2c2,0xA4,(uint8_t*)i2cBuffer, 1, 100);
-  HAL_Delay(5);
-  if (HAL_I2C_Master_Receive(&hi2c2,0xA4,(uint8_t*)nunchuck_data, 6, 100) == HAL_OK) {
-    input_timeout_counter = 0;
-  }
-
-  if (input_timeout_counter > INPUT_TIMEOUT) {
-    HAL_Delay(50);
-    Nunchuck_Init();
-  }
-
-  //setScopeChannel(0, (int)nunchuck_data[0]);
-  //setScopeChannel(1, (int)nunchuck_data[1]);
-  //setScopeChannel(2, (int)nunchuck_data[5] & 1);
-  //setScopeChannel(3, ((int)nunchuck_data[5] >> 1) & 1);
-}

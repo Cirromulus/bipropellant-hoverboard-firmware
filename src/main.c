@@ -99,7 +99,6 @@ extern float batteryVoltage; // global variable for battery voltage
 uint32_t inactivity_timeout_counter;
 uint32_t debug_counter = 0;
 
-extern uint8_t nunchuck_data[6];
 #ifdef CONTROL_PPM
 extern volatile uint16_t ppm_captured_value[PPM_NUM_CHANNELS+1];
 #endif
@@ -323,11 +322,6 @@ int main(void) {
 
   //int lastspeeds[2] = {0, 0};
 
-  #ifdef CONTROL_SENSOR
-  // things we use in main loop for sensor control
-  consoleLog("power on\n");
-
-  #endif
 
     // enables interrupt reading of hall sensors for dead reconing wheel position.
     HallInterruptinit();
@@ -335,13 +329,6 @@ int main(void) {
   #ifdef CONTROL_PPM
     PPM_Init();
   #endif
-
-  #ifdef CONTROL_NUNCHUCK
-    I2C_Init();
-    Nunchuck_Init();
-  #endif
-
-
 
   // sets up serial ports, and enables protocol on selected ports
   setup_protocol();
@@ -398,13 +385,6 @@ int main(void) {
     // delay until we should start processing
     while (timeStats.now_us < timeStats.start_processing_us){
       #if (INCLUDE_PROTOCOL == INCLUDE_PROTOCOL2)
-        #ifdef SOFTWARE_SERIAL
-          while ( softwareserial_available() > 0 ) {
-            protocol_byte( &sSoftwareSerial, (unsigned char) softwareserial_getrx() );
-          }
-          protocol_tick( &sSoftwareSerial );
-        #endif
-
         #if defined(SERIAL_USART2_IT) && defined(CONTROL_SENSOR)
           // if we enabled USART2 as protocol from power button at startup
           if (USART2ProtocolEnable) {
@@ -455,163 +435,29 @@ int main(void) {
     cmd1 = 0;
     cmd2 = 0;
 
-    #ifdef CONTROL_NUNCHUCK
-      Nunchuck_Read();
-      cmd1 = CLAMP((nunchuck_data[0] - 127) * 8, -1000, 1000); // x - axis. Nunchuck joystick readings range 30 - 230
-      cmd2 = CLAMP((nunchuck_data[1] - 128) * 8, -1000, 1000); // y - axis
-
-      button1 = (uint8_t)nunchuck_data[5] & 1;
-      button2 = (uint8_t)(nunchuck_data[5] >> 1) & 1;
-    #endif
-
     #ifdef CONTROL_PPM
-      cmd1 = CLAMP((ppm_captured_value[0] - 500) * 2, -1000, 1000);
-      cmd2 = CLAMP((ppm_captured_value[1] - 500) * 2, -1000, 1000);
       button1 = ppm_captured_value[5] > 500;
       float scale = ppm_captured_value[2] / 1000.0f;
+      cmd1 = CLAMP((ppm_captured_value[0] - 500) * 2 * scale, -1000, 1000);
+      cmd2 = CLAMP((ppm_captured_value[1] - 500) * 2 * scale, -1000, 1000);
+
+      // ####### LOW-PASS FILTER #######
+      steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
+      speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
     #endif
 
-#ifdef CONTROL_ADC
-      // ADC values range: 0-4095, see ADC-calibration in config.h
 
-      adcrFiltered = adcrFiltered * (1.0 - ADC_OFF_FILTER) + adc_buffer.l_rx2 * ADC_OFF_FILTER;
-      adctFiltered = adctFiltered * (1.0 - ADC_OFF_FILTER) + adc_buffer.l_tx2 * ADC_OFF_FILTER;
-
-
-
-      if(adc_buffer.l_tx2 < ADC1_ZERO) {
-        cmd1_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_MIN, ADC1_ZERO) - ADC1_ZERO) / ((ADC1_ZERO - ADC1_MIN) / ADC1_MULT_NEG); // ADC1 - Steer
-      } else {
-        cmd1_ADC = (CLAMP(adc_buffer.l_tx2, ADC1_ZERO, ADC1_MAX) - ADC1_ZERO) / ((ADC1_MAX - ADC1_ZERO) / ADC1_MULT_POS); // ADC1 - Steer
-      }
-
-      if(adc_buffer.l_rx2 < ADC2_ZERO) {
-        cmd2_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_MIN, ADC2_ZERO) - ADC2_ZERO) / ((ADC2_ZERO - ADC2_MIN) / ADC2_MULT_NEG); // ADC2 - Speed
-      } else {
-        cmd2_ADC = (CLAMP(adc_buffer.l_rx2, ADC2_ZERO, ADC2_MAX) - ADC2_ZERO) / ((ADC2_MAX - ADC2_ZERO) / ADC2_MULT_POS); // ADC2 - Speed
-      }
-
-      if(ADC_SWITCH_CHANNELS) {
-        int cmdTemp = cmd1_ADC;
-        cmd1_ADC = cmd2_ADC;
-        cmd2_ADC = cmdTemp;
-        if((adctFiltered < ADC_OFF_START) || (adctFiltered > ADC_OFF_END) ) {
-          ADCcontrolActive = true;
-        } else {
-          if(ADCcontrolActive) {
-            cmd1 = 0;
-            cmd2 = 0;
-          }
-          ADCcontrolActive = false;
-        }
-      } else {
-        if((adcrFiltered < ADC_OFF_START) || (adcrFiltered > ADC_OFF_END) ) {
-          ADCcontrolActive = true;
-        } else {
-          if(ADCcontrolActive) {
-            cmd1 = 0;
-            cmd2 = 0;
-          }
-          ADCcontrolActive = false;
-        }
-      }
-
-      if(ADC_REVERSE_STEER) {
-        cmd1_ADC = -cmd1_ADC;
-      }
-      // use ADCs as button inputs:
-      button1_ADC = (uint8_t)(adc_buffer.l_tx2 > 2000);  // ADC1
-      button2_ADC = (uint8_t)(adc_buffer.l_rx2 > 2000);  // ADC2
-#endif
 
     if (!power_button_info.startup_button_held){
-    #ifdef CONTROL_SENSOR
-      // read the last sensor message in the buffer
-      sensor_read_data();
-
-      // tapp one or other side twice in 2s, with at least 1/4s between to
-      // enable hoverboard mode.
-      if (CONTROL_TYPE_NONE == control_type){
-        if (sensor_data[0].doubletap || sensor_data[1].doubletap){
-          if (FlashContent.HoverboardEnable){
-            sensor_control = 1;
-          }
-          consoleLog("double tap -> hoverboard mode\r\n");
-          sensor_data[0].doubletap = 0;
-          sensor_data[1].doubletap = 0;
+        if(button1)
+        {
+            // ####### MIXER #######
+            pwms[0] = CLAMP(speed * SPEED_COEFFICIENT -  steer * STEER_COEFFICIENT, -1000, 1000);
+            pwms[1] = CLAMP(speed * SPEED_COEFFICIENT +  steer * STEER_COEFFICIENT, -1000, 1000);
         }
-      }
-
-      if (electrical_measurements.charging){
-        sensor_set_flash(0, 3);
-      } else {
-        sensor_set_flash(0, 0);
-      }
-
-      // if roll is a large angle (>20 degrees)
-      // then disable
-      #ifdef CONTROL_SENSOR
-        int setcolours = 1;
-        if (sensor_control && FlashContent.HoverboardEnable){
-          if ((!sensor_data[0].rollhigh) || (!sensor_data[1].rollhigh)){
-            if (enable) {
-              consoleLog("disable by rollHigh\r\n");
-            }
-            enable = 0;
-          } else {
-            if(!electrical_measurements.charging){
-              int either_sensor_ok = sensor_data[0].sensor_ok || sensor_data[1].sensor_ok;
-              int dirs[2] = {-1, 1};
-
-              for (int i = 0; i < 2; i++){
-                if (sensor_data[i].sensor_ok){
-                  pwms[i] = CLAMP(dirs[i]*(sensor_data[i].complete.Angle - sensor_data[i].Center)/3, -FlashContent.HoverboardPWMLimit, FlashContent.HoverboardPWMLimit);
-                  sensor_set_colour(i, SENSOR_COLOUR_YELLOW);
-                  if (!enable) {
-                    consoleLog("enable by hoverboard mode & !rollHigh\r\n");
-                    enable = 1;
-                  }
-                } else {
-                  pwms[i] = 0;
-                  if (enable && !either_sensor_ok) {
-                    consoleLog("disable by hoverboard mode & step off\r\n");
-                    enable = 0;
-                  }
-                  sensor_set_colour(i, SENSOR_COLOUR_GREEN);
-                }
-              }
-              // don't set default cilours below
-              setcolours = 0;
-              input_timeout_counter = 0;
-              inactivity_timeout_counter = 0;
-            } else {
-              pwms[0] = pwms[1] = 0;
-              input_timeout_counter = 0;
-              if (enable) {
-                consoleLog("disable by charging\r\n");
-                enable = 0;
-              }
-            }
-          }
-        }
-
-        // if not set above, set default colours now
-        // changed so that  it did not cycle btween green/yellow
-        if(setcolours) {
-          for (int i = 0; i < 2; i++){
-            if  (sensor_data[i].sensor_ok){
-              sensor_set_colour(i, SENSOR_COLOUR_GREEN);
-            } else {
-              sensor_set_colour(i, SENSOR_COLOUR_RED);
-            }
-          }
-        }
-      #endif // end if control_sensor
-
-    #endif // CONTROL_SENSOR
-
-    #if (INCLUDE_PROTOCOL != NO_PROTOCOL)||defined(CONTROL_SENSOR)
-        if (!sensor_control || !FlashContent.HoverboardEnable){
+        else
+        {
+    #if (INCLUDE_PROTOCOL != NO_PROTOCOL)
           if ((last_control_type != control_type) || (!enable)){
             // nasty things happen if it's not re-initialised
             init_PID_control();
@@ -674,47 +520,10 @@ int main(void) {
               }
               break;
           }
-        }
+      #endif // (INCLUDE_PROTOCOL != NO_PROTOCOL)
       }
+    }
 
-      #if defined CONTROL_ADC
-        if(ADCcontrolActive) {
-          cmd1 = cmd1_ADC;
-          cmd2 = cmd2_ADC;
-          input_timeout_counter = 0;
-        }
-      #endif
-
-      #ifdef CONTROL_SENSOR
-        // send twice to make sure each side gets it.
-        // if we sent diagnositc data, it seems to need this.
-        sensor_send_lights();
-      #endif
-
-    #else  // (INCLUDE_PROTOCOL != NO_PROTOCOL)||defined(CONTROL_SENSOR)
-      }
-    #endif // (INCLUDE_PROTOCOL != NO_PROTOCOL)||defined(CONTROL_SENSOR)
-
-      // ####### LOW-PASS FILTER #######
-      steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
-      speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
-
-
-      // ####### MIXER #######
-    #if (INCLUDE_PROTOCOL != NO_PROTOCOL)
-      if(ADCcontrolActive) {
-    #else
-      if(1) {
-    #endif
-
-        if(ADC_TANKMODE && ADCcontrolActive) {
-          pwms[0] = pwms[0] * (1.0 - FILTER) + cmd1 * FILTER;
-          pwms[1] = pwms[1] * (1.0 - FILTER) + cmd2 * FILTER;
-        } else {
-          pwms[0] = CLAMP(speed * SPEED_COEFFICIENT -  steer * STEER_COEFFICIENT, -1000, 1000);
-          pwms[1] = CLAMP(speed * SPEED_COEFFICIENT +  steer * STEER_COEFFICIENT, -1000, 1000);
-        }
-      }
 
     if(SWITCH_WHEELS) {
       int tmppwm = pwms[1];
@@ -722,9 +531,6 @@ int main(void) {
       pwms[0] = tmppwm;
     }
 
-    #ifdef ADDITIONAL_CODE
-      ADDITIONAL_CODE;
-    #endif
       if (!enable){
         pwms[0] = pwms[1] = 0;
       }

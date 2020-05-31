@@ -67,28 +67,6 @@ void fn_enable ( PROTOCOL_STAT *s, PARAMSTAT *param, uint8_t fn_type, unsigned c
     }
 }
 
-
-#ifdef CONTROL_SENSOR
-////////////////////////////////////////////////////////////////////////////////////////////
-// Variable & Functions for 0x01 sensor_data
-
-extern SENSOR_DATA sensor_data[2];
-
-// used to send only pertinent data, not the whole structure
-PROTOCOL_SENSOR_FRAME sensor_copy[2];
-
-void fn_SensorData ( PROTOCOL_STAT *s, PARAMSTAT *param, uint8_t fn_type, unsigned char *content, int len ) {
-    switch (fn_type) {
-        case FN_TYPE_PRE_READ:
-            // copy just sensor input data
-            memcpy(&sensor_copy[0], &sensor_data[0].complete, sizeof(sensor_copy[0]));
-            memcpy(&sensor_copy[1], &sensor_data[1].complete, sizeof(sensor_copy[1]));
-            break;
-    }
-}
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////////////////
 // Variable & Functions for 0x02 HallData
 
