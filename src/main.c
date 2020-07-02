@@ -250,13 +250,13 @@ int main(void) {
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 1, 0);
 
-#define WHEELBASE_MM 525.0
   deadreconer = DeadReckoner(
     & HallData[0].HallPosn,
     & HallData[1].HallPosn,
     HALL_POSN_PER_REV,
-    (DEFAULT_WHEEL_SIZE_INCHES*25.4),
+    WHEEL_DIAMETER_MM,
     WHEELBASE_MM, 1);
+
 
   SystemClock_Config();
 
@@ -325,6 +325,7 @@ int main(void) {
 
     // enables interrupt reading of hall sensors for dead reconing wheel position.
     HallInterruptinit();
+    HallInterruptSetWheelDiameterMM(WHEEL_DIAMETER_MM);
 
   #ifdef CONTROL_PPM
     PPM_Init();

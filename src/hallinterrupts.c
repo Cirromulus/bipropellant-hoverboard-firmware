@@ -78,8 +78,7 @@ volatile HALL_PARAMS local_hall_params[2];
 
 volatile int64_t timerwraps = 0;
 
-static float WheelSize_mm = (DEFAULT_WHEEL_SIZE_INCHES * 25.4);
-
+static float WheelSize_mm = 500.0;
 
 
 //////////////////////////////////////////////////////////////
@@ -89,11 +88,6 @@ void HallInterruptinit(void){
     memset((void *)&local_hall_params, 0, sizeof(local_hall_params));
     local_hall_params[0].direction = -1;
     local_hall_params[1].direction = 1;
-
-    // overrides local fle default
-    #ifdef WHEEL_SIZE_INCHES
-    WheelSize_mm = (WHEEL_SIZE_INCHES * 25.4);
-    #endif
 
     HallData[0].HallPosnMultiplier = (float)((WheelSize_mm*3.14159265359)/(float)HALL_POSN_PER_REV);
     HallData[1].HallPosnMultiplier = (float)((WheelSize_mm*3.14159265359)/(float)HALL_POSN_PER_REV);

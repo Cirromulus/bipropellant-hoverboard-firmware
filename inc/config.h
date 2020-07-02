@@ -19,6 +19,11 @@
 #endif
 //////////////////////////////////////////////////////////
 
+
+#define WHEELBASE_MM 		620.0
+#define WHEEL_DIAMETER_MM	500
+
+
 //////////////////////////////////////////////////////////
 // implementaiton of specific for macro control types
 // provide a short explaination here
