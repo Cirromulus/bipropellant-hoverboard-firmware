@@ -9,3 +9,5 @@ _autosave*
 *.bak
 .DS_Store
 .pio/*
+.clang_complete
+.gcc-flags.json
